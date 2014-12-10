@@ -35,17 +35,23 @@ start_session(QueuedCall = #queued_call{flow = Flow}) ->
 
 start_session(Session, QueuedCall) ->
   Project = project:find(QueuedCall#queued_call.project_id),
-  {StatusUrl, StatusUser, StatusPass} = case QueuedCall#queued_call.status_callback_url of
-    undefined -> project:status_callback(Project);
-    <<>> -> project:status_callback(Project);
-    Url -> {Url, undefined, undefined}
-  end,
-  Session#session{
-    address = QueuedCall#queued_call.address,
-    status_callback_url = StatusUrl,
-    status_callback_user = StatusUser,
-    status_callback_password = StatusPass,
-    callback_params = QueuedCall#queued_call.callback_params,
-    queued_call = QueuedCall,
-    project = Project
-  }.
+  case project:enable(Project) of
+  1 ->
+    {StatusUrl, StatusUser, StatusPass} = case QueuedCall#queued_call.status_callback_url of
+      undefined -> project:status_callback(Project);
+      <<>> -> project:status_callback(Project);
+      Url -> {Url, undefined, undefined}
+    end,
+    Session#session{
+      address = QueuedCall#queued_call.address,
+      status_callback_url = StatusUrl,
+      status_callback_user = StatusUser,
+      status_callback_password = StatusPass,
+      callback_params = QueuedCall#queued_call.callback_params,
+      queued_call = QueuedCall,
+      project = Project
+    };
+  _ ->
+    queued_call:delete(QueuedCall),
+    undefined
+  end.

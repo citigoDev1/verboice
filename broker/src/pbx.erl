@@ -10,7 +10,7 @@
 -callback answer(pbx()) -> any().
 -callback hangup(pbx()) -> any().
 -callback play(resource(), pbx()) -> any().
--callback capture(any(), any(), any(), any(), any(), pbx()) -> any().
+-callback capture(any(), any(), any(), any(), any(), any(), pbx()) -> any().
 -callback terminate(pbx()) -> any().
 -callback can_play(resource_kind(), pbx()) -> boolean().
 -callback sound_path_for(string(), pbx()) -> string().

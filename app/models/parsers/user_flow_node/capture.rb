@@ -61,9 +61,10 @@ module Parsers
             c.Capture({
                 min: @min_input_length,
                 max: @max_input_length,
-                finish_on_key: @finish_on_key,
+                finish_on_key: '0,1,3', #@finish_on_key,
                 timeout: @timeout
               }.merge( @instructions_resource.capture_flow ))
+	    #c.Record @id, @name, {:stop_keys => '0,1,3', :timeout => @timeout}
             c.Assign "value_#{@id}", 'digits'
             c.PersistVariable @persisted_variable_name, "value_#{@id}" if @persisted_variable_name
             c.If valid_digits_condition do |c|

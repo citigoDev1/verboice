@@ -51,6 +51,7 @@ class ProjectsController < ApplicationController
 
   def update
     if @project.update_attributes(params[:project])
+      @project.update_grammar_content!
       redirect_to(project_path(@project), :notice => "Project #{@project.name} successfully updated.")
     else
       render :action => "edit"

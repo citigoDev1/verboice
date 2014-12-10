@@ -2,19 +2,22 @@
 -export([run/2]).
 -include("session.hrl").
 
-run(Args, Session = #session{pbx = Pbx, js_context = JS}) ->
+run(Args, Session = #session{pbx = Pbx, call_log = CallLog, js_context = JS}) ->
   Min = proplists:get_value(min, Args),
   Max = proplists:get_value(max, Args),
   Timeout = proplists:get_value(timeout, Args, 5),
   FinishOnKey = proplists:get_value(finish_on_key, Args, "#"),
-
+  
   Caption = prepare_caption(Args, Session),
+  CallLogId = CallLog:id(),
+  Filename = filename(CallLogId),
+  filelib:ensure_dir(Filename),
   {_, JS2} = erjs:eval("digits = timeout = finish_key = null", JS),
 
   poirot:log(info, "Waiting user input (timeout: ~B, min: ~B, max: ~B, finish: ~s)", [Timeout, Min, Max, FinishOnKey]),
 
-  JS3 = case Pbx:capture(Caption, Timeout, FinishOnKey, Min, Max) of
-    finish_key ->
+  JS3 = case Pbx:capture(Filename, Caption, Timeout, FinishOnKey, Min, Max) of
+      finish_key ->
       poirot:log(info, "User pressed the finish key"),
       erjs_context:set(finish_key, true, JS2);
     timeout ->
@@ -53,3 +56,7 @@ prepare_text_resource(Args, Session) ->
     undefined -> throw(unknown_resource);
     Text -> resource:prepare_text_resource(list_to_binary(Text), Session)
   end.
+
+filename(CallLogId) ->
+  {ok, RecordDir} = application:get_env(record_dir),
+  filename:join([RecordDir, util:to_string(CallLogId), "results.wav"]).

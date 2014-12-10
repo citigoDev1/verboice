@@ -1,14 +1,20 @@
 #= require workflow/steps/step_with_children
 #= require workflow/steps/menu_option
-
 onWorkflow ->
   class window.Menu extends StepWithChildren
     @type = 'menu'
 
     constructor: (attrs) ->
       super(attrs)
+      @content_arr = content.split ","
+      @dict = {}
+      for i in [0..@content_arr.length-1]
+        @tmp_arr = @content_arr[i].split ":"
+        if @tmp_arr.length == 2
+          @dict[@tmp_arr[1].trim()] = @tmp_arr[0].trim()
 
       @options = ko.observableArray([])
+
       @new_option_command = ko.observable null
 
       @current_editing_resource = ko.observable null
@@ -43,7 +49,6 @@ onWorkflow ->
       @is_invalid = ko.computed () =>
         @is_name_invalid() or @are_options_invalid() or @is_options_resource_invalid()
 
-
     @initialize: (hash) ->
       menu = new Menu(hash)
       menu.options(new MenuOption(opt.number, opt.next, menu) for opt in (hash.options || []))
@@ -64,7 +69,10 @@ onWorkflow ->
       @options.push(new MenuOption(@available_numbers()[0], new_step_id, @))
 
     remove_option_with_confirm: (option) =>
-      if confirm("Are you sure you want to remove option #{option.number()} and all its steps?")
+      number = option.number()
+      if use_voice != 0
+        number = dict[number]
+      if confirm("Are you sure you want to remove option '" + number + "' and all its steps?")
         @remove_child_step(option)
 
     button_class: () =>

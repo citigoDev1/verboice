@@ -110,6 +110,27 @@ ActiveRecord::Schema.define(:version => 20140522152029) do
   add_index "call_logs", ["account_id", "id"], :name => "index_call_logs_on_account_id_and_id"
   add_index "call_logs", ["call_flow_id"], :name => "index_call_logs_on_call_flow_id"
 
+  create_table "call_logs_backup", :force => true do |t|
+    t.integer  "account_id"
+    t.integer  "project_id"
+    t.datetime "finished_at"
+    t.string   "direction"
+    t.string   "address"
+    t.string   "state",         :default => "active"
+    t.datetime "created_at",                          :null => false
+    t.datetime "updated_at",                          :null => false
+    t.integer  "channel_id"
+    t.datetime "started_at"
+    t.integer  "schedule_id"
+    t.datetime "not_before"
+    t.integer  "call_flow_id"
+    t.string   "fail_reason"
+    t.string   "pbx_logs_guid"
+  end
+
+  add_index "call_logs_backup", ["account_id", "id"], :name => "index_call_logs_on_account_id_and_id"
+  add_index "call_logs_backup", ["call_flow_id"], :name => "index_call_logs_on_call_flow_id"
+
   create_table "channels", :force => true do |t|
     t.integer  "account_id"
     t.integer  "call_flow_id"
@@ -307,6 +328,12 @@ ActiveRecord::Schema.define(:version => 20140522152029) do
     t.string   "time_zone",           :default => "UTC"
     t.text     "languages"
     t.string   "default_language"
+    t.integer  "enable",              :default => 1,     :null => false
+    t.string   "en_grammar_url"
+    t.string   "es_grammar_url"
+    t.text     "en_grammar_content"
+    t.text     "es_grammar_content"
+    t.integer  "use_voice",           :default => 0,     :null => false
   end
 
   create_table "queued_calls", :force => true do |t|

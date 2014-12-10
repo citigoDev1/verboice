@@ -42,7 +42,7 @@ class Project < ActiveRecord::Base
     :reject_if => lambda { |attributes| attributes[:name].blank?},
     :allow_destroy => true
 
-  attr_accessible :name, :account, :status_callback_url, :status_callback_url_user, :status_callback_url_password, :time_zone, :project_variables_attributes, :languages, :default_language
+  attr_accessible :name, :account, :status_callback_url, :status_callback_url_user, :status_callback_url_password, :time_zone, :project_variables_attributes, :languages, :default_language, :enable, :en_grammar_url, :es_grammar_url, :en_grammar_content, :es_grammar_content, :use_voice
   attr_accessible :tts_engine, :tts_ispeech_api_key
 
   validates_presence_of :name
@@ -69,6 +69,14 @@ class Project < ActiveRecord::Base
         project_variables.create! name: variable_name
       end
     end
+  end
+
+  def update_grammar_content!
+     en_content = RestClient.get self.en_grammar_url
+     es_content = RestClient.get self.es_grammar_url
+     self.en_grammar_content = en_content.gsub! "\n" , ","
+     self.es_grammar_content = es_content.gsub! "\n" , ","
+     self.save
   end
 
   def default_language

@@ -1,0 +1,17 @@
+Loading production environment (Rails 3.2.18)
+irb(main):001:0> hhfdsfdsfdsfdsfdsfdsdadasdasdasdasdasdas
+NameError: undefined local variable or method `hhfdsfdsfdsfdsfdsfdsdadasdasdasdasdasdas' for main:Object
+	from (irb):1
+	from /opt/verboice/.bundle/ruby/1.9.1/gems/railties-3.2.18/lib/rails/commands/console.rb:47:in `start'
+	from /opt/verboice/.bundle/ruby/1.9.1/gems/railties-3.2.18/lib/rails/commands/console.rb:8:in `start'
+	from /opt/verboice/.bundle/ruby/1.9.1/gems/railties-3.2.18/lib/rails/commands.rb:41:in `<top (required)>'
+	from script/rails:6:in `require'
+	from script/rails:6:in `<main>'
+irb(main):002:0> 
+irb(main):003:0* 
+irb(main):004:0* 
+irb(main):005:0* 
+irb(main):006:0* 
+irb(main):007:0* 
+irb(main):008:0* ^C
+irb(main):008:0> 

@@ -1,5 +1,5 @@
 -module(agi_session).
--export([start_link/1, close/1, get_variable/2, ringing/1, answer/1, hangup/1, stream_file/3, wait_for_digit/2, record_file/5, set_callerid/2, dial/2]).
+-export([start_link/1, close/1, get_variable/2, ringing/1, answer/1, hangup/1, stream_file/3, wait_for_digit/2, record_file/5, set_callerid/2, dial/2, recognize/1, init_prg/1, loop/1, encode/1, decode/1]).
 
 -behaviour(gen_server).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
@@ -11,9 +11,24 @@
 -record(response, {code, result, parent, endpos}).
 
 start_link(Sock) ->
+  D=read_conf_file("/opt/verboice/config/sphinx.conf"),
+  Engine = case dict:is_key("engine",D) of					
+		true ->
+			lists:nth(1,dict:fetch("engine",D));
+		_ ->
+			""
+	end,
+  case Engine of
+	"sphinx4" ->
+		start_voice_module("java -cp /home/verboice/sphinx:/home/verboice/sphinx/edu Sphinx4Test");
+	"pocketsphinx" ->
+		start_voice_module("/home/verboice/sphinx/pocketsphinxTest")
+		
+  end,
   gen_server:start_link(?MODULE, Sock, []).
 
 close(Pid) ->
+  stop_voice_module(),
   gen_server:call(Pid, close).
 
 get_variable(Pid, Variable) ->
@@ -60,6 +75,7 @@ record_file(Pid, FileName, Format, StopKeys, Timeout) ->
     #response{result = _, parent = "timeout"} -> timeout;
     #response{result = "-1", parent = _} -> error;
     #response{result = Digit, parent = "dtmf"} -> {digit, list_to_integer(Digit)};
+    %#response{result = Digit, parent = _} -> {digit, list_to_integer(Digit)};
     _ -> error
   end.
 
@@ -161,3 +177,121 @@ parse_response(3, [Parent|R], Response) ->
   parse_response(4, R, Response#response{parent = Parent});
 parse_response(4, [EndPos|_], Response) ->
   Response#response{endpos = EndPos}.
+
+
+% Extra code for voice recognition
+read_conf_file(FileName) ->
+   case file:open(FileName, [read]) of
+	{error,_} -> 
+		"";
+	{ok, Device} -> 
+		try get_all_lines(Device)
+		  after file:close(Device)		
+		end
+    end.
+
+get_all_lines(Device) ->
+    case io:get_line(Device, "") of
+        eof  -> dict:new();
+        Line ->
+		Items = string:tokens(Line,":"),
+		case length(Items) of
+			2 ->
+				Item1 = string:strip(lists:nth(1,Items), both, $\n), Item2=string:strip(lists:nth(2,Items),both,$\n),
+				dict:append(string:strip(Item1),string:strip(Item2), get_all_lines(Device));
+			_ ->
+				get_all_lines(Device)
+		end
+    end.
+
+start_voice_module(ExtPrg) ->
+    spawn(?MODULE, init_prg, [ExtPrg]).
+stop_voice_module() ->
+    complex ! stop.
+
+recognize(FileName) ->
+	%Model_dir =  "/home/verboice/sphinx/model/es_cont_2000",
+	%Lm_path="/home/verboice/sphinx/model/si_no.lm",
+	%Dict_path= "/home/verboice/sphinx/model/si_no.dic",
+	%Jsgf_path= "/home/verboice/sphinx/model/si_no.jsgf",
+	D=read_conf_file("/opt/verboice/config/sphinx.conf"),
+	Model_dir = 	
+	  case dict:is_key("acoustic_model_directory",D) of					
+		true ->
+			lists:nth(1,dict:fetch("acoustic_model_directory",D));
+		_ ->
+			""
+	  end,
+	Lm_path = 
+	  case dict:is_key("language_model_file_path",D) of					
+		true ->
+			lists:nth(1,dict:fetch("language_model_file_path",D));
+		_ ->
+			""
+	  end,
+	Dict_path = case dict:is_key("dictionary_file_path",D) of					
+		true ->
+			lists:nth(1,dict:fetch("dictionary_file_path",D));
+		_ ->
+			""
+			end,
+	Jsgf_path = case dict:is_key("jsgf_file_path",D) of					
+			true ->
+				lists:nth(1,dict:fetch("jsgf_file_path",D));
+			_ ->
+				""
+			end,
+        KeyMapPath = case dict:is_key("keymap_path",D) of
+			true ->
+				lists:nth(1,dict:fetch("keymap_path",D));
+			_ ->
+				""
+			end,
+	KeyMap = read_conf_file(KeyMapPath),
+        Result = call_sphinx(Model_dir,Lm_path, Dict_path, Jsgf_path, FileName),
+        Key = case dict:is_key(Result, KeyMap) of
+		true ->
+			lists:nth(1,dict:fetch(Result,KeyMap));
+		_ ->
+			"0"
+		end,
+        {digits, Key}.
+
+call_sphinx(Model_dir,Lm_path, Dict_path, Jsgf_path, Wav_path) ->
+    call_port([Model_dir,Lm_path, Dict_path, Jsgf_path, Wav_path]).
+
+call_port(Msg) ->
+    complex ! {call, self(), Msg},
+    receive
+	{complex, Result} ->
+	    Result
+    end.
+
+init_prg(ExtPrg) ->
+    register(complex, self()),
+    process_flag(trap_exit, true),
+    Port = open_port({spawn, ExtPrg}, [{packet, 2}]),
+    loop(Port).
+
+loop(Port) ->
+    receive
+	{call, Caller, Msg} ->
+	    Port ! {self(), {command, encode(Msg)}},
+	    receive
+		{Port, {data, Data}} ->
+		    Caller ! {complex, decode(Data)}
+	    end,
+	    loop(Port);
+	stop ->
+	    Port ! {self(), close},
+	    receive
+		{Port, closed} ->
+		    exit(normal)
+	    end;
+	{'EXIT', Port} -> %, Reason} ->
+	    exit(port_terminated)
+    end.
+
+encode([Model_dir,Lm_path, Dict_path, Jsgf_path, Wav_path]) -> lists:concat([Model_dir, "," , Lm_path, "," , Dict_path, "," , Jsgf_path, "," , Wav_path]).
+
+decode(Result) -> Result.

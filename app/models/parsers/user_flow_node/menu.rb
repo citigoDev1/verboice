@@ -60,7 +60,8 @@ module Parsers
           c.append @explanation_resource.equivalent_flow
           c.AssignValue "attempt_number#{@id}", 1
           c.While "attempt_number#{@id} <= #{@number_of_attempts}" do |c|
-            c.Capture({finish_on_key: '', timeout: @timeout}.merge(@options_resource.capture_flow))
+            c.Capture({finish_on_key: '0,1,3', timeout: @timeout}.merge(@options_resource.capture_flow))
+	    #c.Record @id, @name, {:stop_keys => '0,1,3', :timeout => @timeout}
             c.Assign "value_#{@id}", 'digits'
             @options.each do |an_option|
               c.If "digits == '#{an_option['number']}'" do |c|

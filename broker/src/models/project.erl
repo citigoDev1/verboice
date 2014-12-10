@@ -1,5 +1,5 @@
 -module(project).
--export([voice/2, tts_engine/1, ispeech_api_key/1, default_language/1, status_callback/1]).
+-export([voice/2, tts_engine/1, ispeech_api_key/1, default_language/1, status_callback/1, enable/1]).
 -define(CACHE, true).
 -define(TABLE_NAME, "projects").
 -define(MAP, [
@@ -33,3 +33,6 @@ status_callback(#project{status_callback_url = Url, encrypted_config = Config}) 
   User = proplists:get_value("status_callback_url_user", Config),
   Pass = proplists:get_value("status_callback_url_password", Config),
   {Url, User, Pass}.
+
+enable(#project{enable = Enable}) ->
+  Enable.

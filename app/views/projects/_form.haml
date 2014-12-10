@@ -1,3 +1,12 @@
+:javascript
+  function toggle_call(){
+    var button1 = document.getElementById('buttonPause');
+    if(button1.innerHTML.indexOf("Stop") >= 0){
+      button1.innerHTML = "Resume calls";
+    }else{
+      button1.innerHTML = "Stop calls";
+    }
+  }
 - content_for :head do
   :javascript
     $(function() { initProjectSettings(#{@project.default_language.to_json}, #{@project.languages.to_json}, #{@project.synthesizer.voices.to_json}); });
@@ -61,11 +70,25 @@
   %br
   %br
 
+  %h1 Voice Recognition
+  = f.text_field :en_grammar_url, :label => 'Grammar link for English'
+  = f.text_field :es_grammar_url, :label => 'Grammar link for Spanish'
+  = f.check_box :use_voice, :label => 'Use voice recognition'
+  %br
+  %hr
+  %br
+  %br
   %h1 Status callback
-
   = f.text_field :status_callback_url, :label => 'URL', readonly: readonly
   = f.text_field :status_callback_url_user, :label => 'User', :autocomplete => 'off', readonly: readonly
   = f.password_field :status_callback_url_password, :label => 'Password', :autocomplete => 'off', readonly: readonly
+
+  %br
+  %hr
+  %br
+  %br
+  %h1 Enable/Disable making calls
+  = f.check_box :enable
 
   - if @project.new_record? || project_admin?
     %hr

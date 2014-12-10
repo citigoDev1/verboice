@@ -1,5 +1,5 @@
 broker_port: 9999
-ispeech_format: mp3
+ispeech_format: wav
 asset_host: "http://default-domain.com"
 default_url_options:
   host: "default-domain.com"

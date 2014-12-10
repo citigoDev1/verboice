@@ -1,5 +1,5 @@
 -module(asterisk_pbx).
--export([new/1, pid/1, answer/1, hangup/1, can_play/2, play/2, capture/6, record/4, terminate/1, sound_path_for/2, dial/4]).
+-export([new/1, pid/1, answer/1, hangup/1, can_play/2, play/2, capture/7, record/4, terminate/1, sound_path_for/2, dial/4, capture_digits/6]).
 
 -behaviour(pbx).
 
@@ -34,17 +34,32 @@ play({file, FileName}, EscapeDigits, {?MODULE, Pid}) ->
     Ret -> Ret
   end.
 
-capture(Caption, Timeout, FinishOnKey, Min, Max, Pbx = {?MODULE, Pid}) ->
-  %TODO: expect error
+capture(Filename, Caption, Timeout, FinishOnKey, Min, Max, Pbx = {?MODULE, Pid}) ->
+%   Data = [Caption, FinishOnKey, Timeout, Min, Max, Pbx, Pid],
+%   file:write_file("/home/verboice/test.txt", io_lib:fwrite("~p.\n", [Data])),
+%   {digits, "3"}.
+
+%  case play(Caption, "0123456789#*", Pbx = {?MODULE, Pid}) of
+%    {ok, _} -> capture_digits(Timeout, FinishOnKey, Min, Max, Pid, "");
+%    {digit, Key, _} ->
+%      case lists:member(Key, FinishOnKey) of
+%        true -> finish_key;
+%        _Else -> capture_digits(Timeout, FinishOnKey, Min, Max, Pid, [Key])
+%      end;
+%    error -> throw({error, "Error during audio playback"})
+%  end.
+
+  poirot:log(info, "Prepare to capture (timeout: ~B, min: ~B, max: ~B, finish: ~s)", [Timeout, Min, Max, FinishOnKey]),
   case play(Caption, "0123456789#*", Pbx = {?MODULE, Pid}) of
-    {ok, _} -> capture_digits(Timeout, FinishOnKey, Min, Max, Pid, "");
+    {ok, _} -> recognize(Filename, FinishOnKey, Timeout, Pid);
     {digit, Key, _} ->
       case lists:member(Key, FinishOnKey) of
-        true -> finish_key;
-        _Else -> capture_digits(Timeout, FinishOnKey, Min, Max, Pid, [Key])
+        true -> {digits, Key};
+        _Else -> recognize(Filename, FinishOnKey, Timeout, Pid)
       end;
     error -> throw({error, "Error during audio playback"})
   end.
+
 
 capture_digits(_Timeout, _FinishOnKey, _Min, Max, _Pid, Keys) when length(Keys) >= Max ->
   {digits, Keys};
@@ -76,6 +91,26 @@ record(FileName, StopKeys, Timeout, {?MODULE, Pid}) ->
       error -> throw(error);
       _ ->
         sox:convert(TempFile, FileName)
+    end
+  after
+    file:delete(TempFile)	
+  end.
+
+recognize(FileName, StopKeys, Timeout, Pid) ->
+%   Data = [FileName, StopKeys, Timeout, Pid],
+%   file:write_file("/home/verboice/test.txt", io_lib:fwrite("~p.\n", [Data])),
+%   {digits, "1"}.
+  TempFile = filename:rootname(FileName) ++ ".gsm",
+  file:write_file(TempFile, <<>>),
+  file:change_mode(TempFile, 8#666),
+
+  try
+    case agi_session:record_file(Pid, filename:absname(filename:rootname(FileName)), "gsm", StopKeys, Timeout * 1000) of
+      error -> throw(error);
+      {digit, Digit} -> {digits, binary_to_list(<<Digit>>)};
+      _ ->
+        sox:convert(TempFile, FileName),
+        agi_session:recognize(FileName)
     end
   after
     file:delete(TempFile)

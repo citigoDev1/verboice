@@ -1,3 +1,56 @@
+:javascript
+  function toggle_voice_mode(checkbox){
+    if(checkbox.checked){
+      initDropDown();
+      $('#div1').css('display','');
+      $('.voice_on').css('display','');
+      $('.voice_off').css('display','none');   
+    }else{
+      $('#div1').css('display','none');
+      $('.voice_on').css('display','none');      
+      $('.voice_off').css('display','');
+    }
+  }
+  var use_voice = #{@project.use_voice};
+  var defaultLanguage = '#{@project.default_language}';
+  var project_en_grammar_content = '#{@project.en_grammar_content}';
+  var project_es_grammar_content = '#{@project.es_grammar_content}';
+  var content = "";
+  if(defaultLanguage == 'en'){
+    content = project_en_grammar_content;
+  }else if(defaultLanguage == 'es'){
+    content = project_es_grammar_content;
+  }
+  var content_arr = content.split(",");
+  var dict = {};
+  dict[0] = 'unrecognized';
+  for(var i=0;i<content_arr.length;i++){
+    var tmp_arr = content_arr[i].split(":");
+    if(tmp_arr.length == 2){
+      dict[tmp_arr[1].trim()] = tmp_arr[0].trim();
+    }
+  }
+
+  function initDropDown(){
+    var selects = document.getElementsByClassName('select1');
+    var st = '#{@project.en_grammar_content}';
+    var sarr = st.split(",");
+   
+    for(var k=0; k < selects.length; k++){
+      var options = selects[k].options;
+      for(var i = options.length-1; i >= 0; i--){
+        selects[k].removeChild(options[i]);
+      }
+
+      for(var i = 0; i < sarr.length; i++){
+        if(sarr[i].trim() == '') continue;
+        var opt = document.createElement('option');
+        opt.value = sarr[i];
+        opt.innerHTML = sarr[i];
+        selects[k].appendChild(opt);
+      }
+    }
+  }
 %script{type: "text/html", id: "menu_step_template"}
   .feditor-sidebar.right.box.w28.iblock.h65
 
@@ -55,7 +108,8 @@
         %ul.oplist
           %span{ 'data-bind' => 'foreach: options' }
             %li
-              %select{ko(options: 'available_numbers', value: 'number')}
+              %select{ko(options: 'available_numbers',optionsText: "function(item){return ((use_voice!=0)?dict[item]:item)}", value: 'number'), :class => 'voice_off'}              
+              %select{:class => 'voice_on select1', :style => 'display:none'}
               %span.ux-oplist{ko(text: "next_name()", click: 'select_step')}
               %button.clist-remove{ 'data-bind' => 'click: $parent.remove_option_with_confirm' }
           %li
@@ -63,6 +117,7 @@
               Add an option:
               %select.w10{ko(options: 'commands()', optionsText: "function(item) { return (new window[item]({})).default_name() }", value: 'new_option_command')}
             %button.clist-add{ 'data-bind' => 'click: add_option'}
+
         %hr
         = store_value_tags
         %br

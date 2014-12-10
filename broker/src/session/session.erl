@@ -162,22 +162,25 @@ ready({dial, RealBroker, Channel, QueuedCall}, _From, State = #state{session_id 
       CallLog = call_log_srv:new(SessionId, call_log:find(QueuedCall#queued_call.call_log_id)),
       Contact = get_contact(QueuedCall#queued_call.project_id, QueuedCall#queued_call.address, QueuedCall#queued_call.call_log_id),
       Session = QueuedCall:start_session(),
+      case Session of
+         undefined ->
+              CallLog:update([{state, "cancelled"}, {fail_reason, undefined}]);
+         _ ->
+	      poirot:add_meta([
+	        {address, QueuedCall#queued_call.address},
+	        {project_id, QueuedCall#queued_call.project_id},
+	        {call_log_id, QueuedCall#queued_call.call_log_id},
+	        {channel_id, Channel#channel.id},
+	        {channel_name, Channel#channel.name}
+	      ]),
 
-      poirot:add_meta([
-        {address, QueuedCall#queued_call.address},
-        {project_id, QueuedCall#queued_call.project_id},
-        {call_log_id, QueuedCall#queued_call.call_log_id},
-        {channel_id, Channel#channel.id},
-        {channel_name, Channel#channel.name}
-      ]),
-
-      Session#session{
-        session_id = SessionId,
-        channel = Channel,
-        call_log = CallLog,
-        contact = Contact
-      };
-
+	      Session#session{
+	        session_id = SessionId,
+	        channel = Channel,
+	        call_log = CallLog,
+	        contact = Contact
+	      }
+        end;
     Session ->
       CallLog = Session#session.call_log,
       Session#session{queued_call = QueuedCall, address = QueuedCall#queued_call.address}
@@ -351,7 +354,11 @@ finalize({failed, Reason}, State = #state{session = Session = #session{call_log 
     {error, _} -> "fatal error";
     _ -> "error"
   end,
-  CallLog:update([{state, NewState}, {fail_reason, FailReason}, {finished_at, calendar:universal_time()}]),
+  ModifiedState = case Reason of
+  	hangup -> "cancelled";
+  	_ -> NewState
+  end,
+  CallLog:update([{state, ModifiedState}, {fail_reason, FailReason}, {finished_at, calendar:universal_time()}]),
   StopReason = case Reason of
     {error, Error} -> Error;
     _ -> normal
